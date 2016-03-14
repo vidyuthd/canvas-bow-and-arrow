@@ -1,0 +1,440 @@
+<!DOCTYPE HTML>
+<html>
+<body>
+	<canvas style="display: block; width: 1215px; height: 641px;" width="1215" height="641" id="mycanvas"></canvas>
+	<script type="text/javascript">
+		var a,c;
+	 a = document.getElementById('mycanvas');
+	 c = a.getContext('2d');
+
+	 var cS,cOW,cOH,cW,cH;
+	 var r = 'red',w='white',b='black',bG = 'rgb(34,139,34)', _=Math;
+	var bls=[],ars = [];
+	var ctr = -1, tBF = 0;
+	var aL, iP = {};
+	var m_b = 25;
+
+	 cOW = a.offsetWidth;
+	 cOH = a.offsetHeight;
+	 iP.y = sTCOH(cOH);
+	 c.fillStyle = bG;
+	 c.fillRect(0,0,cOW,cOH);
+	 c.fill();
+
+	 cS = a.offsetHeight/a.height;
+	 cW = a.width;
+	 cH = a.height;
+	 aL = cW/10;
+	 iP.x = cW/2;
+
+	var bow = {
+		vyd : cH/3,
+		s_vx : cW/3,
+		ht : cH/4, 
+		b_s : cW/15,
+		s_c : w,
+		b_c : b,
+		i_b_e : false,
+		b_y : null,
+		c_a : null,
+		draw: function(position){
+			if(!gC.running) return;
+
+			if(this.i_b_e)
+			{
+				this.dEP(position);
+				return;
+			}
+
+			this.rB();
+			c.save();
+			c.beginPath();
+			// get the top position based on mouse pointer
+			// validate position y , need a fn which will return approx y in case you are going too up
+			// vyd is string center
+			position = this.gOP(position);
+			var y = position ? position.y || this.vyd : this.vyd;
+			this.b_y = y;
+			c.moveTo(this.s_vx,y-this.ht/2);
+			c.lineTo(this.s_vx,y+this.ht/2);
+			c.strokeStyle = this.s_c;
+			c.lW = 1;
+			c.stroke();
+			c.beginPath();
+			c.moveTo(this.s_vx,y-this.ht/2);
+			c.quadraticCurveTo(this.s_vx+cH/10,y,this.s_vx,y+this.ht/2);
+			c.strokeStyle = this.b_c;
+			c.lW = 2;
+			c.stroke();
+			c.restore();
+
+			if(this.c_a == null &&  gC.nOAR > 0){
+				var arrow = gC.dA({x:this.s_vx+aL,y:this.b_y});
+				this.c_a = arrow;
+				this.c_a.draw();
+			}
+			else if(this.c_a != null) {
+				this.c_a.vy = this.b_y;
+				this.c_a.draw();
+			}
+		},
+		dEP : function(position){
+			if(!gC.running || gC.nOAR <= 0){
+				return;
+			}
+
+			this.i_b_e = true;
+			this.rB();
+			c.save();
+			// get the top position based on mouse pointer
+			// validate position y , need a fn which will return approx y in case you are going too up
+			// vyd is string center
+			position = this.gOP(position);
+			var y = position ? position.y || this.vyd : this.vyd;
+			this.b_y = y;
+			c.beginPath();
+			c.moveTo(this.s_vx,y-this.ht/2);
+			c.quadraticCurveTo(this.s_vx+15,y,this.s_vx,y+this.ht/2);
+			c.strokeStyle = this.b_c;
+			c.lW = 2;
+			c.stroke();
+			c.beginPath();
+			c.moveTo(this.s_vx,y-this.ht/2);
+			c.lineTo(this.s_vx-this.b_s,y);
+			c.lineTo(this.s_vx,y+this.ht/2);
+			c.strokeStyle = this.s_c;
+			c.lW = 1;
+			c.stroke();
+			c.restore();
+			this.c_a.vx = this.s_vx-this.b_s+aL;
+			this.c_a.vy = this.b_y;
+			this.c_a.draw();
+		},
+		fA: function(){
+			gC.fA(this.c_a);
+			this.c_a = null;
+		},
+		rB: function(){
+			 c.save();
+			 c.fillStyle = bG;
+			 c.clearRect(this.s_vx-20,0,this.s_vx+aL,cOH);
+		 	 c.fillRect(this.s_vx-20,0,this.s_vx+aL,cOH);
+		 	 c.restore();
+		},
+		gOP: function(ps){
+			if((ps && ps.y - this.ht/2 < 0)){
+				return {
+					x : ps.x,
+					y : this.ht/2
+				};
+			}
+			else if(ps && ps.y > cH - this.ht/2 ){
+				return {
+					x : ps.x,
+					y : cH - this.ht/2 
+				};
+			}
+			return ps;
+		}
+	}
+
+	var Arrow = function(){
+		this.vx = null;
+		this.vy = null;
+		this.length = aL;
+		this.tFS = r;
+		this.hFS = w;
+		this.bFS = b;
+		this.lW = 1/2;
+		this.tHW = cW/90;
+		this.tHH = cH/75;
+		this.fired = false;
+		this.speed = cW/150;
+	}
+	Arrow.prototype.draw = function(ps){
+		c.save();
+		c.beginPath();
+		var x,y; 
+		x = this.vx || ps.x; 
+		y = this.vy || ps.y;
+		this.vx = x; this.vy = y;
+		c.lW = this.lW;
+		c.moveTo(x,y);
+		c.strokeStyle = this.hFS;
+		c.lineTo(x-5,y);
+		c.stroke();
+		c.moveTo(x-5,y);
+		c.lineTo(x-this.length,y);
+		c.strokeStyle = this.bFS;
+		c.stroke();
+		c.fillStyle = this.tFS;
+		c.fillRect(x-this.length,y-1/2-this.tHH,this.tHW,this.tHH);
+		c.fillRect(x-this.length,y+1/2,this.tHW,this.tHH);
+		c.fill();
+		c.restore();
+	}
+
+	var Bln = function(bln){
+		this.bln = false;
+		this.vx = null;
+		this.vy = null;
+		this.rds = cH/25;
+		this.fillStyle = r;
+		this.tW = 0.25;
+		this.speed = cH/250;
+	}
+	Bln.prototype.draw = function(ps){
+		if(!gC.running) return;
+		if(this.bln){
+			c.save();
+			c.fillStyle = this.fillStyle;
+			x = this.vx || ps.x; 
+			y = this.vy || ps.y;
+			this.vx = x; 
+			this.vy = y;
+			c.moveTo(x,y+this.rds);
+			c.quadraticCurveTo(x-(this.rds/2),y+(this.rds/2),x,y-(this.rds/2));
+			c.moveTo(x,y-(this.rds/2));
+			c.quadraticCurveTo(x-(this.rds/2),y-(this.rds/2),x,y-this.rds);
+    		c.quadraticCurveTo(x+this.rds,y,x,y+this.rds);
+    		c.fill();
+    		c.beginPath();
+    		c.moveTo(x,y+this.rds);
+			c.lineTo(x,y+2*(this.rds));
+			c.closePath();
+			c.lW = this.tW;
+			c.stroke();
+			c.restore();
+		}
+		else{
+			c.save();
+			c.beginPath();
+			x = this.vx || ps.x; 
+			y = this.vy || ps.y;
+			this.vx = x; 
+			this.vy = y;
+			c.arc(x,y,this.rds,0,_.PI,true);
+			c.lineTo(x,y+this.rds);
+			c.fillStyle = this.fillStyle;
+			c.fill();
+			c.beginPath();
+			c.moveTo(x,y+this.rds);
+			c.lineTo(x,y+2*(this.rds));
+			c.closePath();
+			c.lW = this.tW;
+			c.stroke();
+			c.restore();
+		}
+	}
+
+	var gC = {
+		nOAR : 10,
+		running : false,
+		points : 0,
+		iFRB : 60,
+		dA : function(ps){
+			var arrow  = new Arrow();
+			arrow.draw(ps);
+			return arrow;
+		},
+		fA :function(arrow){
+			if(this.running && this.nOAR > 0){
+					arrow.fired = true;
+					ars.push(arrow);
+					this.nOAR--;
+			}
+		},
+		rGL : function(){
+			/* check all the bls and mark them bln if any of the x and y match any of ars x and y and update the score */
+			function cIAHB(ax,ay,bx,by,br){
+				if(ax >= (bx-br) && ax <= (bx+br) && ay >= (by-br) && ay <= (by+br)){
+					return true;
+				}
+				return false;
+			}
+
+			if(this.running && this.nOAR >= 0){
+				for(i=0; i<ars.length; i++){
+					var arrow = ars[i];
+					for(j=0;j<bls.length;j++){
+						var bl = bls[j];
+						if(!bl.bln && cIAHB(arrow.vx,arrow.vy,bl.vx,bl.vy,bl.rds)){
+							this.points += this.iFRB
+							bl.bln = true;
+						}
+					}
+				}
+			}
+			if(this.nOAR <= 0 && ars.length == 0){
+				 	// need to fix this
+					this.running = false;
+					c.clearRect(0,0,cOW,cOH);
+					c.fillRect(0,0,cOW,cOH);
+					aB({x:bow.s_vx,y:bow.b_y});
+					sMU({first:"Score: "+gC.points, second:"Arrows: "+gC.nOAR});
+					sM('Game Over!');
+			}
+		}
+	};
+
+	function getOffset(evt) {
+	  var el = evt.target,
+	      x = 0,
+	      y = 0;
+
+	  while (el && !isNaN(el.offsetLeft) && !isNaN(el.offsetTop)) {
+	    x += el.offsetLeft - el.scrollLeft;
+	    y += el.offsetTop - el.scrollTop;
+	    el = el.offsetParent;
+	  }
+
+	  x = evt.clientX - x;
+	  y = evt.clientY - y;
+
+	  x = x/cS;
+	  y = y/cS;
+
+	  return { x: x, y: y };
+	}
+	
+    function run(){
+		 start();
+		 a.onmouseup = function(evt){
+		 	bow.fA();
+		 	bow.i_b_e = false;
+		 }
+		 a.onmousemove = function(evt){
+		 	var position = getOffset(evt);
+		 	aB(position);
+		 }
+		 a.onmousedown = function(evt){
+		 	bow.dEP(getOffset(evt));
+		 }
+	 	gC.running = true;
+    }
+
+    function aB(position){
+    	bow.draw(position);
+    }
+
+    function sB(nOB,position){
+    	var iP = {};
+    	iP.x = position.x; iP.y = position.y;
+    	for(i=0;i<nOB;i++){
+    		var bl = new Bln(false);
+    		bl.draw(iP);
+    		bls.push(bl);
+    		if(nOB == 10)
+    		iP.x = iP.x + 2*bl.rds;
+    		else
+    		iP.x = iP.x + nOB*bl.rds;
+    	}
+    }
+
+    function cUE(){
+    	if(!gC.running){
+    		bls = [], ars = [];
+    		return;
+    	}
+
+    	c.clearRect(0,0,cOW,cOH);
+    	c.fillRect(0,0,cOW,cOH);
+    	aB({x:bow.s_vx,y:bow.b_y});
+    	sMU({first:"Score: "+gC.points, second:"Arrows: "+gC.nOAR});
+    	var n_bl=[],n_Ar = [];
+    	for(i = 0;i < bls.length;i++){
+    		if((bls[i].vy > 0 && !bls[i].bln) || (bls[i].vy < cH && bls[i].bln)){
+    			n_bl.push(bls[i]);
+    		}
+    	}
+    	for(i=0; i < ars.length; i++){
+    		if(ars[i].vx < cW){
+    			n_Ar.push(ars[i]);
+    		}
+    	}
+    	bls = n_bl;
+    	ars = n_Ar;
+    }
+
+    function sMU(msg){
+    	  c.save();
+    	  var fs = cH/15;
+    	  c.font = fs+"px serif";
+    	  c.fillStyle = 'blue';
+  		  c.fillText(msg.first, 0, cH/15);
+  		  c.fillText(msg.second, 0, cH/7.5);
+  		  c.restore();
+    }
+
+    function sM(msg){
+    	  c.save();
+    	  var fs = cH/10
+    	  c.font = fs + "px serif";
+    	  c.fillStyle = r;
+  		  c.fillText(msg, cW/15, (2/3)*cH);
+  		  c.restore();
+    }
+
+    function sTCOH(ht){
+    	return cH*(ht/cOH)
+    }
+
+    function start(){
+    	gC.rGL();
+    	cUE();
+    	if(bls.length > 0 && gC.running){
+    		for(i = 0; i < bls.length; i++){
+	    		var bl = bls[i];
+	    		if(!bl.bln)
+	    			bl.vy =  bl.vy-bl.speed ;
+	    		else
+	    			bl.vy = bl.vy+2*bl.speed;
+	    		if(bl.vy > 0){
+	    			bl.draw({});
+	    		}
+    		}
+    	}
+    	if(ars.length > 0 && gC.running){
+    		for(i = 0; i < ars.length; i++){
+	    		var ar = ars[i];
+	    		if(ar.fired){
+	    			ar.vx = ar.vx + ar.speed;
+		    		if(ar.vx < cOW){
+		    			ar.draw();
+		    		}
+		    	}
+    		}
+    	}
+    	if(ctr < 0){
+    		ctr = 60;
+    		gB();
+    		tBF ++;
+    	}
+    	ctr --;
+    	window.requestAnimationFrame(start);
+    }
+
+    function gB(){
+    	if(gC.running){
+	    	var position = {};position.x= iP.x;
+	    	position.y = iP.x;
+	    	if(bls.length < m_b){
+	    		window.setTimeout(function(){sB(gRNB(),position)},1000);
+	    	}
+    	}
+    }
+
+    function gRNB(){
+    	if (tBF%8 === 0){
+    		return 10;
+    	}
+    	else{
+    		return _.ceil(_.random()*4);
+    	}
+    }
+    
+    run();
+	</script>
+	<!--a id="mycanvas"> </a-->
+</body>
+</html>

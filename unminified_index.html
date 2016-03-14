@@ -1,0 +1,450 @@
+<!DOCTYPE HTML>
+<html>
+<head></head>
+<style type="text/css">
+	canvas{
+		margin-left:17%;
+		margin-right:16%;
+		margin-top:4%;
+		width:800px;
+		height:600px;
+	}
+</style>
+<script type="text/javascript">
+	var canvas,ctx,canvasScale,canvasOffsetWidth,canvasOffsetHeight,canvasWidth,canvasHeight;
+	var initialPosition = {x:150};
+	var balloons=[],arrows = [];
+	var counter = -1, tenBalloonFlag = 0;
+	var arrowLength = 40;
+	var max_balloons = 25;
+
+	var bow = {
+		vy_default : 50,
+		vx_arrow_relaxed : 80,
+		vx_arrow_extended : 50,
+		string_vx : 65,
+		height : 35, 
+		bow_stretch : 20,
+		string_color : 'white',
+		bow_color : 'black',
+		is_bow_extended : false,
+		bow_vy : null,
+		current_arrow : null,
+		draw: function(position){
+			if(!gameControl.running) return;
+
+			if(this.is_bow_extended)
+			{
+				this.drawExtendedPosition(position);
+				return;
+			}
+
+			this.redrawBow();
+			ctx.save();
+			ctx.beginPath();
+			// get the top position based on mouse pointer
+			// validate position y , need a fn which will return approx y in case you are going too up
+			// vy_default is string center
+			position = this.getOffsetPosition(position);
+			var y = position ? position.y || this.vy_default : this.vy_default;
+			this.bow_vy = y;
+			ctx.moveTo(this.string_vx,y-this.height/2);
+			ctx.lineTo(this.string_vx,y+this.height/2);
+			ctx.strokeStyle = this.string_color;
+			ctx.lineWidth = 1;
+			ctx.stroke();
+			ctx.beginPath();
+			ctx.moveTo(this.string_vx,y-this.height/2);
+			ctx.quadraticCurveTo(this.string_vx+15,y,this.string_vx,y+this.height/2);
+			ctx.strokeStyle = this.bow_color;
+			ctx.lineWidth = 2;
+			ctx.stroke();
+			ctx.restore();
+
+			if(this.current_arrow == null &&  gameControl.noOfArrowsRemaining > 0){
+				var arrow = gameControl.drawArrow({x:this.string_vx+arrowLength,y:this.bow_vy});
+				this.current_arrow = arrow;
+				this.current_arrow.draw();
+			}
+			else if(this.current_arrow != null) {
+				this.current_arrow.vy = this.bow_vy;
+				this.current_arrow.draw();
+			}
+		},
+		drawExtendedPosition : function(position){
+			if(!gameControl.running || gameControl.noOfArrowsRemaining <= 0){
+				return;
+			}
+
+			this.is_bow_extended = true;
+			this.redrawBow();
+			ctx.save();
+			// get the top position based on mouse pointer
+			// validate position y , need a fn which will return approx y in case you are going too up
+			// vy_default is string center
+			position = this.getOffsetPosition(position);
+			var y = position ? position.y || this.vy_default : this.vy_default;
+			this.bow_vy = y;
+			ctx.beginPath();
+			ctx.moveTo(this.string_vx,y-this.height/2);
+			ctx.quadraticCurveTo(this.string_vx+15,y,this.string_vx,y+this.height/2);
+			ctx.strokeStyle = this.bow_color;
+			ctx.lineWidth = 2;
+			ctx.stroke();
+			ctx.beginPath();
+			ctx.moveTo(this.string_vx,y-this.height/2);
+			ctx.lineTo(this.string_vx-this.bow_stretch,y);
+			ctx.lineTo(this.string_vx,y+this.height/2);
+			ctx.strokeStyle = this.string_color;
+			ctx.lineWidth = 1;
+			ctx.stroke();
+			ctx.restore();
+			this.current_arrow.vx = this.string_vx-this.bow_stretch+arrowLength;
+			this.current_arrow.vy = this.bow_vy;
+			this.current_arrow.draw();
+		},
+		fireArrow: function(){
+			gameControl.fireArrow(this.current_arrow);
+			this.current_arrow = null;
+		},
+		redrawBow: function(){
+			 ctx.save();
+			 ctx.fillStyle = 'rgb(34,139,34)';
+			 ctx.clearRect(this.string_vx-20,0,this.string_vx+arrowLength,canvasOffsetHeight);
+		 	 ctx.fillRect(this.string_vx-20,0,this.string_vx+arrowLength,canvasOffsetHeight);
+		 	 ctx.restore();
+		},
+		getOffsetPosition: function(position){
+			if((position && position.y - this.height/2 < 0)){
+				return {
+					x : position.x,
+					y : this.height/2
+				};
+			}
+			else if(position && position.y > canvasHeight - this.height/2 ){
+				return {
+					x : position.x,
+					y : canvasHeight - this.height/2 
+				};
+			}
+			return position;
+		}
+	}
+
+	var Arrow = function(){
+		this.vx = null;
+		this.vy = null;
+		this.length = arrowLength;
+		this.tailFillStyle = 'red';
+		this.headFillStyle = 'white';
+		this.bodyFillStyle = 'black';
+		this.lineWidth = 1/2;
+		this.tailHolderWidth = 7;
+		this.tailHolderHeight = 2;
+		this.fired = false;
+		this.speed = 2;
+	}
+	Arrow.prototype.draw = function(position){
+		ctx.save();
+		ctx.beginPath();
+		var x,y; 
+		x = this.vx || position.x; 
+		y = this.vy || position.y;
+		this.vx = x; this.vy = y;
+		ctx.lineWidth = this.lineWidth;
+		ctx.moveTo(x,y);
+		ctx.strokeStyle = this.headFillStyle;
+		ctx.lineTo(x-5,y);
+		ctx.stroke();
+		ctx.moveTo(x-5,y);
+		ctx.lineTo(x-this.length,y);
+		ctx.strokeStyle = this.bodyFillStyle;
+		ctx.stroke();
+		ctx.fillStyle = this.tailFillStyle;
+		ctx.fillRect(x-this.length,y-1/2-this.tailHolderHeight,this.tailHolderWidth,this.tailHolderHeight);
+		ctx.fillRect(x-this.length,y+1/2,this.tailHolderWidth,this.tailHolderHeight);
+		ctx.fill();
+		ctx.restore();
+	}
+
+	var Balloon = function(blown){
+		this.blown = false;
+		this.vx = null;
+		this.vy = null;
+		this.radius = 7;
+		this.fillStyle = 'red';
+		this.tailWidth = 0.25;
+		this.speed = 0.3;
+	}
+	Balloon.prototype.draw = function(position){
+		if(!gameControl.running) return;
+		if(this.blown){
+			ctx.save();
+			ctx.fillStyle = this.fillStyle;
+			x = this.vx || position.x; 
+			y = this.vy || position.y;
+			this.vx = x; 
+			this.vy = y;
+			ctx.moveTo(x,y+this.radius);
+			ctx.quadraticCurveTo(x-(this.radius/2),y+(this.radius/2),x,y-(this.radius/2));
+			ctx.moveTo(x,y-(this.radius/2));
+			ctx.quadraticCurveTo(x-(this.radius/2),y-(this.radius/2),x,y-this.radius);
+    		ctx.quadraticCurveTo(x+7,y,x,y+this.radius);
+    		ctx.fill();
+    		ctx.beginPath();
+    		ctx.moveTo(x,y+this.radius);
+			ctx.lineTo(x,y+2*(this.radius));
+			ctx.closePath();
+			ctx.lineWidth = this.tailWidth;
+			ctx.stroke();
+			ctx.restore();
+		}
+		else{
+			ctx.save();
+			ctx.beginPath();
+			x = this.vx || position.x; 
+			y = this.vy || position.y;
+			this.vx = x; 
+			this.vy = y;
+			ctx.arc(x,y,this.radius,0,Math.PI,true);
+			ctx.lineTo(x,y+this.radius);
+			ctx.fillStyle = this.fillStyle;
+			ctx.fill();
+			ctx.beginPath();
+			ctx.moveTo(x,y+this.radius);
+			ctx.lineTo(x,y+2*(this.radius));
+			ctx.closePath();
+			ctx.lineWidth = this.tailWidth;
+			ctx.stroke();
+			ctx.restore();
+		}
+	}
+
+	var gameControl = {
+		noOfArrowsRemaining : 10,
+		running : false,
+		points : 0,
+		incrementForRedBalloon : 60,
+		drawArrow : function(position){
+			var arrow  = new Arrow();
+			arrow.draw(position);
+			return arrow;
+		},
+		fireArrow :function(arrow){
+			if(this.running && this.noOfArrowsRemaining > 0){
+					arrow.fired = true;
+					arrows.push(arrow);
+					this.noOfArrowsRemaining--;
+			}
+		},
+		runGameLogic : function(){
+			/* check all the balloons and mark them blown if any of the x and y match any of arrows x and y and update the score */
+			function checkIfArrowHitBalloon(ax,ay,bx,by,br){
+				if(ax >= (bx-br) && ax <= (bx+br) && ay >= (by-br) && ay <= (by+br)){
+					return true;
+				}
+				return false;
+			}
+
+			if(this.running && this.noOfArrowsRemaining >= 0){
+				for(i=0; i<arrows.length; i++){
+					var arrow = arrows[i];
+					for(j=0;j<balloons.length;j++){
+						var balloon = balloons[j];
+						if(!balloon.blown && checkIfArrowHitBalloon(arrow.vx,arrow.vy,balloon.vx,balloon.vy,balloon.radius)){
+							this.points += this.incrementForRedBalloon
+							balloon.blown = true;
+						}
+					}
+				}
+			}
+			if(this.noOfArrowsRemaining <= 0 && arrows.length == 0){
+				 	// need to fix this
+					this.running = false;
+					ctx.clearRect(0,0,canvasOffsetWidth,canvasOffsetHeight);
+					ctx.fillRect(0,0,canvasOffsetWidth,canvasOffsetHeight);
+					addBow({x:bow.string_vx,y:bow.bow_vy});
+					showMessageToUser({first:"Score: "+gameControl.points, second:"Arrows: "+gameControl.noOfArrowsRemaining});
+					showMessage('Game Over! Press refresh to restart.');
+			}
+		}
+	};
+
+	function getOffset(evt) {
+	  var el = evt.target,
+	      x = 0,
+	      y = 0;
+
+	  while (el && !isNaN(el.offsetLeft) && !isNaN(el.offsetTop)) {
+	    x += el.offsetLeft - el.scrollLeft;
+	    y += el.offsetTop - el.scrollTop;
+	    el = el.offsetParent;
+	  }
+
+	  x = evt.clientX - x;
+	  y = evt.clientY - y;
+
+	  x = x/canvasScale;
+	  y = y/canvasScale;
+
+	  return { x: x, y: y };
+	}
+	
+    function run(){
+     	// make canvas frame ready
+		 canvas = document.getElementById('mycanvas');
+		 ctx = canvas.getContext('2d');
+		 canvasOffsetWidth = canvas.offsetWidth;
+		 canvasOffsetHeight = canvas.offsetHeight;
+		 initialPosition.y = scaleTocanvasOffsetHeight(canvasOffsetHeight);
+		 ctx.fillStyle = 'rgb(34,139,34)';
+		 ctx.fillRect(0,0,canvasOffsetWidth,canvasOffsetHeight);
+		 ctx.fill();
+
+		 canvasScale = canvas.offsetHeight/canvas.height;
+		 canvasWidth = canvas.width;
+		 canvasHeight = canvas.height;
+
+		 start();
+		 canvas.onmouseup = function(evt){
+		 	bow.fireArrow();
+		 	bow.is_bow_extended = false;
+		 }
+		 canvas.onmousemove = function(evt){
+		 	var position = getOffset(evt);
+		 	addBow(position);
+		 }
+		 canvas.onmousedown = function(evt){
+		 	bow.drawExtendedPosition(getOffset(evt));
+		 }
+		 // add shooter with bow
+		 // put events on him and arrow(click,mouse move up and down)
+		 // put events on balloon w.r.t arrow
+		 // start balloons animations 
+	 	gameControl.running = true;
+    }
+
+    function addBow(position){
+    	bow.draw(position);
+    }
+
+    function setupBalloons(noOfBalloons,position){
+    	var initPosition = {};
+    	initPosition.x = position.x; initPosition.y = position.y;
+    	for(i=0;i<noOfBalloons;i++){
+    		var balloon = new Balloon(false);
+    		balloon.draw(initPosition);
+    		balloons.push(balloon);
+    		if(noOfBalloons == 10)
+    		initPosition.x = initPosition.x + 2*balloon.radius;
+    		else
+    		initPosition.x = initPosition.x + noOfBalloons*balloon.radius;
+    	}
+    }
+
+    function clearUpEntities(){
+    	if(!gameControl.running){
+    		balloons = [], arrows = [];
+    		return;
+    	}
+
+    	ctx.clearRect(0,0,canvasOffsetWidth,canvasOffsetHeight);
+    	ctx.fillRect(0,0,canvasOffsetWidth,canvasOffsetHeight);
+    	addBow({x:bow.string_vx,y:bow.bow_vy});
+    	showMessageToUser({first:"Score: "+gameControl.points, second:"Arrows: "+gameControl.noOfArrowsRemaining});
+    	var newBalloons=[],newArrows = [];
+    	for(i = 0;i < balloons.length;i++){
+    		if((balloons[i].vy > 0 && !balloons[i].blown) || (balloons[i].vy < canvasHeight && balloons[i].blown)){
+    			newBalloons.push(balloons[i]);
+    		}
+    	}
+    	for(i=0; i < arrows.length; i++){
+    		if(arrows[i].vx < canvasWidth){
+    			newArrows.push(arrows[i]);
+    		}
+    	}
+    	balloons = newBalloons;
+    	arrows = newArrows;
+    }
+
+    function showMessageToUser(msg){
+    	  ctx.save();
+    	  ctx.font = "10px serif";
+    	  ctx.strokeStyle = 'blue';
+  		  ctx.strokeText(msg.first, 0, 10);
+  		  ctx.strokeText(msg.second, 0, 20);
+  		  ctx.restore();
+    }
+
+    function showMessage(msg){
+    	  ctx.save();
+    	  ctx.font = "18px serif";
+    	  ctx.strokeStyle = 'red';
+  		  ctx.strokeText(msg, 10, 100);
+  		  ctx.restore();
+    }
+
+    function scaleTocanvasOffsetHeight(height){
+    	return 150*(height/canvasOffsetHeight)
+    }
+
+    function start(){
+    	gameControl.runGameLogic();
+    	clearUpEntities();
+    	if(balloons.length > 0 && gameControl.running){
+    		for(i = 0; i < balloons.length; i++){
+	    		var balloon = balloons[i];
+	    		if(!balloon.blown)
+	    			balloon.vy =  balloon.vy-balloon.speed ;
+	    		else
+	    			balloon.vy = balloon.vy+2*balloon.speed;
+	    		if(balloon.vy > 0){
+	    			balloon.draw({});
+	    		}
+    		}
+    	}
+    	if(arrows.length > 0 && gameControl.running){
+    		for(i = 0; i < arrows.length; i++){
+	    		var arrow = arrows[i];
+	    		if(arrow.fired){
+	    			arrow.vx = arrow.vx + arrow.speed;
+		    		if(arrow.vx < canvasOffsetWidth){
+		    			arrow.draw();
+		    		}
+		    	}
+    		}
+    	}
+    	if(counter < 0){
+    		counter = 120;
+    		generateBalloons();
+    		tenBalloonFlag ++;
+    	}
+    	counter --;
+    	window.requestAnimationFrame(start);
+    }
+
+    function generateBalloons(){
+    	if(gameControl.running){
+	    	var position = {};position.x= initialPosition.x;
+	    	position.y = initialPosition.x;
+	    	if(balloons.length < max_balloons){
+	    		window.setTimeout(function(){setupBalloons(getRandomNoOfBalloons(),position)},1000);
+	    	}
+    	}
+    }
+
+    function getRandomNoOfBalloons(){
+    	if (tenBalloonFlag%8 === 0){
+    		return 10;
+    	}
+    	else{
+    		return Math.ceil(Math.random()*4);
+    	}
+    }
+    
+    
+</script>
+<body onload="run();">
+	<canvas id="mycanvas"> </canvas>
+</body>
+</html>
